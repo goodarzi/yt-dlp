@@ -90,6 +90,15 @@ class EmbedThumbnailPP(FFmpegPostProcessor):
 
         success = True
         if info['ext'] == 'mp3':
+
+            # Crop thumbnail to 1:1 aspect
+            escaped_thumbnail_filename = thumbnail_filename.replace('%', '#')
+            os.rename(encodeFilename(thumbnail_filename), encodeFilename(escaped_thumbnail_filename))
+            escaped_thumbnail_filename_square = "square_" + escaped_thumbnail_filename
+            self._downloader.to_screen('[ffmpeg] Crop thumbnail "%s" to square' % escaped_thumbnail_filename)
+            self.run_ffmpeg(escaped_thumbnail_filename, escaped_thumbnail_filename_square, ['-vf', 'crop=min(iw\,ih):min(iw\,ih)'])
+            os.rename(encodeFilename(escaped_thumbnail_filename_square), encodeFilename(thumbnail_filename))
+
             options = [
                 '-c', 'copy', '-map', '0:0', '-map', '1:0', '-write_id3v1', '1', '-id3v2_version', '3',
                 '-metadata:s:v', 'title="Album cover"', '-metadata:s:v', 'comment=Cover (front)']
@@ -107,7 +116,7 @@ class EmbedThumbnailPP(FFmpegPostProcessor):
                 options.extend(['-map', '-0:%d' % old_stream])
                 new_stream -= 1
             options.extend([
-                '-attach', self._ffmpeg_filename_argument(thumbnail_filename),
+                '-attach', thumbnail_filename,
                 '-metadata:s:%d' % new_stream, 'mimetype=%s' % mimetype,
                 '-metadata:s:%d' % new_stream, 'filename=cover.%s' % thumbnail_ext])
 
